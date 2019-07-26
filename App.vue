@@ -1,0 +1,266 @@
+<template>
+  <div class="container">
+    <div v-if="!me" class="content">
+      <div uk-grid>
+        <h1 class="uk-margin-top uk-width-1-1">traQ グループ編集ツール</h1>
+        <div class="uk-text-lead">
+          ログインしていません.
+        </div>
+        <div class="uk-width-1-5">
+          <button class="uk-button uk-button-primary" @click="login">ログイン</button>
+        </div>
+      </div>
+    </div>
+    <div class="content uk-margin-top" v-else>
+      <div uk-grid>
+        <h1 class="uk-margin-top uk-width-1-1">traQ グループ編集ツール</h1>
+        <div class="uk-width-1-1">
+          <div v-if="groups.length > 0">
+            <div uk-grid>
+              <h3 class="uk-width-auto">グループ一覧</h3>
+              <div class="uk-width-1-4">
+                <button class="uk-button uk-button-default" @click="getGroups">グループ取得</button>
+              </div>
+            </div>
+            <div>
+              <ul class="uk-list uk-list-divider group">
+                <li :key="group.groupId" v-for="group in groups" @click="editGroup(group)">
+                  <span class="uk-text-lead">
+                    {{group.name}}
+                  </span>
+                  <span class="uk-text-meta">
+                    {{group.description}}
+                  </span>
+                  <div class="uk-leader"></div>
+                  <div>
+                    メンバー {{group.members.length}}人
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div>
+            <div uk-grid>
+              <div class="uk-width-1-5">
+                <input class="uk-input" type="text" placeholder="Group Name" v-model="newGroupName">
+              </div>
+              <div class="uk-width-3-5">
+                <input class="uk-input" type="text" placeholder="Group Description"
+                       v-model="newGroupDescription">
+              </div>
+              <div class="uk-width-1-5">
+                <button class="uk-button uk-button-primary" @click="newGroup">作成</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="uk-width-1-2">
+          <div>
+            <div v-if="curGroup">
+              <h3>{{curGroup.name}}のメンバー一覧</h3>
+              <div class="uk-text-meta">クリックでメンバーを削除</div>
+              <div>
+                <user-list :users="curGroupMembers" height="500" @userClick="removeUser"/>
+              </div>
+            </div>
+            <div v-else>
+              <h3>グループが選択されていません</h3>
+            </div>
+          </div>
+        </div>
+
+        <div class="uk-width-1-2">
+          <div>
+            <h3>追加したいユーザーのID(スペース区切り)</h3>
+            <input class="uk-input" placeholder="@foo @bar..." type="text" v-model="addUserIds">
+          </div>
+
+          <div class="uk-margin">
+            <h3>メンバーに追加されるユーザー</h3>
+            <button @click="addUser" class="uk-button uk-button-primary">追加</button>
+            <user-list :users="willAddUser" height="500"/>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script lang="ts">
+  import {fetchAuthToken, redirectAuthorizationEndpoint} from './oauth'
+  import {Apis, Me, User, UserGroup} from 'traq-api'
+  import {AxiosResponse} from "axios"
+  import UserList from './UserList.vue'
+
+  export default {
+    data(): {
+      api: Apis | null
+      me: Me | null
+      users: User[]
+      groups: UserGroup[]
+      curGroup: UserGroup | null
+      newGroupName: string
+      addUserIds: string
+      newGroupDescription: string
+    } {
+      return {
+        api: null,
+        me: null,
+        users: [],
+        groups: [],
+        curGroup: null,
+        newGroupName: '',
+        addUserIds: '',
+        newGroupDescription: ''
+      }
+    },
+    components: {
+      UserList
+    },
+    methods: {
+      login() {
+        redirectAuthorizationEndpoint()
+        console.log('po')
+      },
+      async getGroups() {
+        await this.api.getGroups().then((res: AxiosResponse<UserGroup[]>) => {
+          console.log(res)
+          this.groups = res.data
+        })
+      },
+      editGroup(group) {
+        this.curGroup = group
+      },
+      async newGroup() {
+        if (this.newGroupName.trim() === '') {
+          return
+        }
+        await this.api.createGroups({
+          name: this.newGroupName.trim(),
+          description: this.newGroupDescription
+        }).then(_ => {
+          this.newGroupName = ''
+          this.newGroupDescription = ''
+          return this.getGroups()
+        })
+          .catch(e => {
+          console.log(e)
+          alert('作成に失敗しました\n' + e.toString())
+        })
+      },
+      async addUser() {
+        if (this.curGroup.type === 'grade') {
+          alert('学年のグループは編集できません')
+          return
+        }
+
+        await Promise.all(this.willAddUser.map(user => {
+          return this.api.addGroupMember(this.curGroup.groupId, {userId: user.userId})
+        }))
+          .then(res => {
+            console.log('added')
+            return this.getGroups()
+          })
+          .then(res => {
+            this.curGroup = this.groups.find(g => g.groupId === this.curGroup.groupId)
+          })
+          .catch(e => {
+            console.log(e)
+            alert('追加に失敗しました\n' + e.toString())
+          })
+      },
+      async removeUser(user) {
+        if (this.curGroup.type === 'grade') {
+          alert('学年のグループは編集できません')
+          return
+        }
+
+        if (confirm(`${user.name}を${this.curGroup.name}から削除しますか？`)) {
+          await this.api.deleteGroupMember(this.curGroup.groupId, user.userId)
+            .then(res => {
+              console.log('deleted')
+              return this.getGroups()
+            })
+            .then(res => {
+              this.curGroup = this.groups.find(g => g.groupId === this.curGroup.groupId)
+            })
+            .catch(e => {
+              console.log(e)
+              alert('削除に失敗しました\n' + e.toString())
+            })
+        }
+      }
+    },
+    async mounted() {
+      const queryParams = new URLSearchParams(location.search)
+      const code = queryParams.get('code')
+      const state = queryParams.get('state')
+      if (code && state) {
+        const verifier = sessionStorage.getItem(`login-code-verifier-${state}`)
+        await fetchAuthToken(code, verifier)
+          .then(res => {
+            console.log(res)
+            this.api = new Apis({accessToken: res.data.access_token})
+            return this.api.getMe().then((me: Me) => {
+              console.log(me)
+              sessionStorage.setItem('access_token', res.data.access_token)
+              location.href = '/'
+            })
+          })
+      } else {
+        const accessToken = sessionStorage.getItem('access_token')
+        this.api = new Apis({
+          accessToken: accessToken
+        })
+        await this.api.getMe().then((res: AxiosResponse<Me>) => {
+          this.me = res.data
+        })
+
+      }
+
+      await this.api.getUsers().then((res: AxiosResponse<User[]>) => {
+        this.users = res.data
+      })
+      await this.getGroups()
+    },
+    computed: {
+      curGroupMembers(): User[] {
+        if (!this.curGroup) {
+          return []
+        }
+
+        return this.curGroup.members.map(userId => {
+          return this.users.find(user => user.userId === userId)
+        })
+      },
+      realUsers(): User[] {
+        return this.users.filter((user: User) => !user.bot && !user.suspended)
+      },
+      wantSetUser(): string[] {
+        return this.addUserIds.split('@').map(id => id.trim())
+      },
+      willAddUser(): User[] {
+        return this.wantSetUser.map(id => this.users.find(user => user.name === id)).filter(user => !!user)
+          .filter(user => {
+            return !this.curGroup.members.find(userId => user.userId === userId)
+          })
+      }
+    }
+  }
+</script>
+
+<style>
+  .container {
+    display: flex;
+    justify-content: center;
+  }
+
+  .content {
+    max-width: 800px;
+  }
+
+  .group {
+    cursor: pointer;
+  }
+</style>
