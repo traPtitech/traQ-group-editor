@@ -19,7 +19,7 @@
             <div uk-grid>
               <h3 class="uk-width-auto">グループ一覧</h3>
               <div class="uk-width-1-4">
-                <button class="uk-button uk-button-default" @click="getGroups">グループ取得</button>
+                <button class="uk-button uk-button-default" @click="getGroups">グループ更新</button>
               </div>
             </div>
             <div>
@@ -32,8 +32,11 @@
                     {{group.description}}
                   </span>
                   <div class="uk-leader"></div>
-                  <div>
-                    メンバー {{group.members.length}}人
+                  <div style="position: relative;">
+                    <span>メンバー {{group.members.length}}人</span>
+                    <button @click="deleteGroup(group.groupId)"
+                      class="uk-button uk-button-danger uk-button-small right-button">削除
+                    </button>
                   </div>
                 </li>
               </ul>
@@ -88,166 +91,176 @@
 </template>
 
 <script lang="ts">
-  import {fetchAuthToken, redirectAuthorizationEndpoint} from './oauth'
-  import {Apis, Me, User, UserGroup} from 'traq-api'
-  import {AxiosResponse} from "axios"
-  import UserList from './UserList.vue'
+    import {fetchAuthToken, redirectAuthorizationEndpoint} from './oauth'
+    import {Apis, Me, User, UserGroup} from 'traq-api'
+    import {AxiosResponse} from "axios"
+    import UserList from './UserList.vue'
 
-  export default {
-    data(): {
-      api: Apis | null
-      me: Me | null
-      users: User[]
-      groups: UserGroup[]
-      curGroup: UserGroup | null
-      newGroupName: string
-      addUserIds: string
-      newGroupDescription: string
-    } {
-      return {
-        api: null,
-        me: null,
-        users: [],
-        groups: [],
-        curGroup: null,
-        newGroupName: '',
-        addUserIds: '',
-        newGroupDescription: ''
-      }
-    },
-    components: {
-      UserList
-    },
-    methods: {
-      login() {
-        redirectAuthorizationEndpoint()
-        console.log('po')
-      },
-      async getGroups() {
-        await this.api.getGroups().then((res: AxiosResponse<UserGroup[]>) => {
-          console.log(res)
-          this.groups = res.data
-        })
-      },
-      editGroup(group) {
-        this.curGroup = group
-      },
-      async newGroup() {
-        if (this.newGroupName.trim() === '') {
-          return
-        }
-        await this.api.createGroups({
-          name: this.newGroupName.trim(),
-          description: this.newGroupDescription
-        }).then(_ => {
-          this.newGroupName = ''
-          this.newGroupDescription = ''
-          return this.getGroups()
-        })
-          .catch(e => {
-          console.log(e)
-          alert('作成に失敗しました\n' + e.toString())
-        })
-      },
-      async addUser() {
-        if (this.curGroup.type === 'grade') {
-          alert('学年のグループは編集できません')
-          return
-        }
+    export default {
+        data(): {
+            api: Apis | null
+            me: Me | null
+            users: User[]
+            groups: UserGroup[]
+            curGroup: UserGroup | null
+            newGroupName: string
+            addUserIds: string
+            newGroupDescription: string
+        } {
+            return {
+                api: null,
+                me: null,
+                users: [],
+                groups: [],
+                curGroup: null,
+                newGroupName: '',
+                addUserIds: '',
+                newGroupDescription: ''
+            }
+        },
+        components: {
+            UserList
+        },
+        methods: {
+            login() {
+                redirectAuthorizationEndpoint()
+                console.log('po')
+            },
+            async getGroups() {
+                await this.api.getGroups().then((res: AxiosResponse<UserGroup[]>) => {
+                    console.log(res)
+                    this.groups = res.data
+                })
+            },
+            editGroup(group) {
+                this.curGroup = group
+            },
+            async newGroup() {
+                if (this.newGroupName.trim() === '') {
+                    return
+                }
+                await this.api.createGroups({
+                    name: this.newGroupName.trim(),
+                    description: this.newGroupDescription
+                })
+                    .then(_ => {
+                        this.newGroupName = ''
+                        this.newGroupDescription = ''
+                        return this.getGroups()
+                    })
+                    .catch(e => {
+                        console.log(e)
+                        alert('作成に失敗しました\n' + e.toString())
+                    })
+            },
+            async deleteGroup(groupId) {
+                await this.api.deleteGroup(groupId)
+                    .catch(e => {
+                        console.log(e)
+                        alert('削除に失敗しました\n' + e.toString())
+                    })
+            },
+            async addUser() {
+                if (this.curGroup.type === 'grade') {
+                    alert('学年のグループは編集できません')
+                    return
+                }
 
-        await Promise.all(this.willAddUser.map(user => {
-          return this.api.addGroupMember(this.curGroup.groupId, {userId: user.userId})
-        }))
-          .then(res => {
-            console.log('added')
-            return this.getGroups()
-          })
-          .then(res => {
-            this.curGroup = this.groups.find(g => g.groupId === this.curGroup.groupId)
-          })
-          .catch(e => {
-            console.log(e)
-            alert('追加に失敗しました\n' + e.toString())
-          })
-      },
-      async removeUser(user) {
-        if (this.curGroup.type === 'grade') {
-          alert('学年のグループは編集できません')
-          return
-        }
+                await Promise.all(this.willAddUser.map(user => {
+                    return this.api.addGroupMember(this.curGroup.groupId, {userId: user.userId})
+                }))
+                    .then(_ => {
+                        console.log('successfully added')
+                        return this.getGroups()
+                    })
+                    .then(_ => {
+                        this.curGroup = this.groups.find(g => g.groupId === this.curGroup.groupId)
+                    })
+                    .catch(e => {
+                        console.log(e)
+                        alert('追加に失敗しました\n' + e.toString())
+                    })
+            },
+            async removeUser(user) {
+                if (this.curGroup.type === 'grade') {
+                    alert('学年のグループは編集できません')
+                    return
+                }
 
-        if (confirm(`${user.name}を${this.curGroup.name}から削除しますか？`)) {
-          await this.api.deleteGroupMember(this.curGroup.groupId, user.userId)
-            .then(res => {
-              console.log('deleted')
-              return this.getGroups()
+                if (confirm(`${user.name}を${this.curGroup.name}から削除しますか？`)) {
+                    await this.api.deleteGroupMember(this.curGroup.groupId, user.userId)
+                        .then(_ => {
+                            console.log('deleted')
+                            return this.getGroups()
+                        })
+                        .then(_ => {
+                            this.curGroup = this.groups.find(g => g.groupId === this.curGroup.groupId)
+                        })
+                        .catch(e => {
+                            console.log(e)
+                            alert('削除に失敗しました\n' + e.toString())
+                        })
+                }
+            }
+        },
+        async mounted() {
+            const queryParams = new URLSearchParams(location.search)
+            const code = queryParams.get('code')
+            const state = queryParams.get('state')
+            if (code && state) {
+                const verifier = sessionStorage.getItem(`login-code-verifier-${state}`)
+                await fetchAuthToken(code, verifier)
+                    .then(res => {
+                        console.log(res)
+                        this.api = new Apis({accessToken: res.data.access_token})
+                        return this.api.getMe().then((me: Me) => {
+                            console.log(me)
+                            sessionStorage.setItem('access_token', res.data.access_token)
+                            location.href = '/'
+                        })
+                    })
+            } else {
+                const accessToken = sessionStorage.getItem('access_token')
+                this.api = new Apis({
+                    accessToken: accessToken
+                })
+                await this.api.getMe().then((res: AxiosResponse<Me>) => {
+                    this.me = res.data
+                })
+
+            }
+            if (!this.me) {
+                await redirectAuthorizationEndpoint()
+            }
+            await this.api.getUsers().then((res: AxiosResponse<User[]>) => {
+                this.users = res.data
             })
-            .then(res => {
-              this.curGroup = this.groups.find(g => g.groupId === this.curGroup.groupId)
-            })
-            .catch(e => {
-              console.log(e)
-              alert('削除に失敗しました\n' + e.toString())
-            })
+            await this.getGroups()
+        },
+        computed: {
+            curGroupMembers(): User[] {
+                if (!this.curGroup) {
+                    return []
+                }
+
+                return this.curGroup.members.map(userId => {
+                    return this.users.find(user => user.userId === userId)
+                })
+            },
+            realUsers(): User[] {
+                return this.users.filter((user: User) => !user.bot && !user.suspended)
+            },
+            wantSetUser(): string[] {
+                return this.addUserIds.split('@').map(id => id.trim())
+            },
+            willAddUser(): User[] {
+                return this.wantSetUser.map(id => this.users.find(user => user.name === id)).filter(user => !!user)
+                    .filter(user => {
+                        return !this.curGroup.members.find(userId => user.userId === userId)
+                    })
+            }
         }
-      }
-    },
-    async mounted() {
-      const queryParams = new URLSearchParams(location.search)
-      const code = queryParams.get('code')
-      const state = queryParams.get('state')
-      if (code && state) {
-        const verifier = sessionStorage.getItem(`login-code-verifier-${state}`)
-        await fetchAuthToken(code, verifier)
-          .then(res => {
-            console.log(res)
-            this.api = new Apis({accessToken: res.data.access_token})
-            return this.api.getMe().then((me: Me) => {
-              console.log(me)
-              sessionStorage.setItem('access_token', res.data.access_token)
-              location.href = '/'
-            })
-          })
-      } else {
-        const accessToken = sessionStorage.getItem('access_token')
-        this.api = new Apis({
-          accessToken: accessToken
-        })
-        await this.api.getMe().then((res: AxiosResponse<Me>) => {
-          this.me = res.data
-        })
-
-      }
-
-      await this.api.getUsers().then((res: AxiosResponse<User[]>) => {
-        this.users = res.data
-      })
-      await this.getGroups()
-    },
-    computed: {
-      curGroupMembers(): User[] {
-        if (!this.curGroup) {
-          return []
-        }
-
-        return this.curGroup.members.map(userId => {
-          return this.users.find(user => user.userId === userId)
-        })
-      },
-      realUsers(): User[] {
-        return this.users.filter((user: User) => !user.bot && !user.suspended)
-      },
-      wantSetUser(): string[] {
-        return this.addUserIds.split('@').map(id => id.trim())
-      },
-      willAddUser(): User[] {
-        return this.wantSetUser.map(id => this.users.find(user => user.name === id)).filter(user => !!user)
-          .filter(user => {
-            return !this.curGroup.members.find(userId => user.userId === userId)
-          })
-      }
     }
-  }
 </script>
 
 <style>
@@ -262,5 +275,10 @@
 
   .group {
     cursor: pointer;
+  }
+
+  .right-button {
+    position: absolute;
+    right: 0;
   }
 </style>
