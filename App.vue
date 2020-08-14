@@ -34,8 +34,8 @@
                   <div class="uk-leader"></div>
                   <div style="position: relative;">
                     <span>メンバー {{group.members.length}}人</span>
-                    <button @click="deleteGroup(group.groupId)"
-                      class="uk-button uk-button-danger uk-button-small right-button">削除
+                    <button @click="deleteGroup(group)"
+                            class="uk-button uk-button-danger uk-button-small right-button">削除
                     </button>
                   </div>
                 </li>
@@ -153,8 +153,13 @@
                         alert('作成に失敗しました\n' + e.toString())
                     })
             },
-            async deleteGroup(groupId) {
-                await this.api.deleteGroup(groupId)
+            async deleteGroup(group) {
+                if (this.group.type === 'grade') {
+                    alert('学年のグループは編集できません')
+                    return
+                }
+
+                await this.api.deleteGroup(group.groupId)
                     .catch(e => {
                         console.log(e)
                         alert('削除に失敗しました\n' + e.toString())
