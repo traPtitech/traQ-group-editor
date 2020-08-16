@@ -22,7 +22,7 @@
             </div>
             <div>
               <ul class="uk-list uk-list-divider group">
-                <li :key="group.groupId" v-for="group in groups" @click="editGroup(group)">
+                <li :key="group.groupId" v-for="group in groups" @click="selectGroup(group)">
                   <span class="uk-text-lead">
                     {{group.name}}
                   </span>
@@ -56,31 +56,52 @@
           </div>
         </div>
 
-        <div class="uk-width-1-2">
-          <div>
-            <div v-if="curGroup">
-              <h3>{{curGroup.name}}のメンバー一覧</h3>
-              <div class="uk-text-meta">クリックでメンバーを削除</div>
-              <div>
-                <user-list :users="curGroupMembers" height="500" @userClick="removeUser"/>
+        <div uk-grid>
+          <div class="uk-width-2-4">
+            <div>
+              <div v-if="curGroup">
+                <h3>{{curGroup.name}}のメンバー一覧</h3>
+                <div class="uk-text-meta">クリックでメンバーを削除</div>
+                <div>
+                  <user-list :users="curGroupMembers" height="500" @userClick="removeUser"/>
+                </div>
+              </div>
+              <div v-else>
+                <h3>グループが選択されていません</h3>
               </div>
             </div>
-            <div v-else>
-              <h3>グループが選択されていません</h3>
+          </div>
+
+          <div class="uk-width-1-4">
+            <div>
+              <h3>追加したいユーザーのID(スペース区切り)</h3>
+              <input class="uk-input" placeholder="@foo @bar..." type="text" v-model="addUserIds">
+            </div>
+
+            <div class="uk-margin">
+              <h3>メンバーに追加されるユーザー</h3>
+              <button @click="addUser" class="uk-button uk-button-primary">追加</button>
+              <user-list :users="willAddUser" height="500"/>
             </div>
           </div>
-        </div>
 
-        <div class="uk-width-1-2">
-          <div>
-            <h3>追加したいユーザーのID(スペース区切り)</h3>
-            <input class="uk-input" placeholder="@foo @bar..." type="text" v-model="addUserIds">
-          </div>
+          <div class="uk-width-1-4">
+            <div>
+              <h3>変更後のグループ情報</h3>
+              <input class="uk-input" placeholder="新規グループ名" type="text" v-model="newGroupInfo.name">
+              <input class="uk-input" placeholder="グループの説明" type="text" v-model="newGroupInfo.description">
+              <input class="uk-input" placeholder="新規adminユーザーUUID" type="text" v-model="newGroupInfo.adminUserId">
+            </div>
 
-          <div class="uk-margin">
-            <h3>メンバーに追加されるユーザー</h3>
-            <button @click="addUser" class="uk-button uk-button-primary">追加</button>
-            <user-list :users="willAddUser" height="500"/>
+            <div class="uk-margin">
+              <div v-if="curGroup">
+                <h3>変更対象グループ: {{curGroup.name}}</h3>
+              </div>
+              <div v-else>
+                <h3>変更対象グループ: グループが選択されていません</h3>
+              </div>
+              <button @click="editGroup" class="uk-button uk-button-primary">変更</button>
+            </div>
           </div>
         </div>
       </div>
@@ -90,7 +111,7 @@
 
 <script lang="ts">
     import {fetchAuthToken, redirectAuthorizationEndpoint} from './oauth'
-    import {Apis, Me, User, UserGroup} from 'traq-api'
+    import {Apis, Me, PatchUserGroup, User, UserGroup} from 'traq-api'
     import {AxiosResponse} from "axios"
     import UserList from './UserList.vue'
 
@@ -104,6 +125,7 @@
             newGroupName: string
             addUserIds: string
             newGroupDescription: string
+            newGroupInfo: PatchUserGroup
         } {
             return {
                 api: null,
@@ -113,7 +135,8 @@
                 curGroup: null,
                 newGroupName: '',
                 addUserIds: '',
-                newGroupDescription: ''
+                newGroupDescription: '',
+                newGroupInfo: {}
             }
         },
         components: {
@@ -130,7 +153,7 @@
                     this.groups = res.data
                 })
             },
-            editGroup(group) {
+            selectGroup(group) {
                 this.curGroup = group
             },
             async newGroup() {
@@ -150,6 +173,32 @@
                         console.log(e)
                         alert('作成に失敗しました\n' + e.toString())
                     })
+            },
+            async editGroup() {
+                if (!this.curGroup) {
+                    alert('編集するグループを選択してください')
+                    return
+                }
+                if (this.curGroup.type === 'grade') {
+                    alert('学年のグループは編集できません')
+                    return
+                }
+
+                if (confirm(`${this.curGroup.name}:\n${this.newGroupInfo}`)) {
+                    await this.api.editGroup(this.curGroup.groupId, this.newGroupInfo)
+                        .then(_ => {
+                            console.log('updated')
+                            this.newGroupInfo = {}
+                            return this.getGroups()
+                        })
+                        .then(_ => {
+                            this.curGroup = this.groups.find(g => g.groupId === this.curGroup.groupId)
+                        })
+                        .catch(e => {
+                            console.log(e)
+                            alert('更新に失敗しました\n' + e.toString())
+                        })
+                }
             },
             async deleteGroup(group: UserGroup) {
                 if (group.type === 'grade') {
@@ -282,7 +331,7 @@
   }
 
   .content {
-    max-width: 800px;
+    max-width: 1200px;
   }
 
   .group {
