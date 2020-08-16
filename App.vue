@@ -17,10 +17,8 @@
         <div class="uk-width-1-1">
           <div v-if="groups.length > 0">
             <div uk-grid>
-              <h3 class="uk-width-auto">グループ一覧</h3>
-              <div class="uk-width-1-4">
-                <button class="uk-button uk-button-default" @click="getGroups">グループ更新</button>
-              </div>
+              <h3 class="uk-width-expand" style="line-height: 40px;">グループ一覧</h3>
+              <button class="uk-button uk-button-default uk-margin-left" @click="getGroups">グループ更新</button>
             </div>
             <div>
               <ul class="uk-list uk-list-divider group">
@@ -32,7 +30,7 @@
                     {{group.description}}
                   </span>
                   <div class="uk-leader"></div>
-                  <div style="position: relative;">
+                  <div class="uk-position-relative">
                     <span>メンバー {{group.members.length}}人</span>
                     <button @click="deleteGroup(group)"
                             class="uk-button uk-button-danger uk-button-small right-button">削除
@@ -154,7 +152,7 @@
                     })
             },
             async deleteGroup(group) {
-                if (this.group.type === 'grade') {
+                if (group.type === 'grade') {
                     alert('学年のグループは編集できません')
                     return
                 }
@@ -285,5 +283,6 @@
   .right-button {
     position: absolute;
     right: 0;
+    bottom: 0;
   }
 </style>
