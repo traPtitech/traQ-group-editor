@@ -57,7 +57,7 @@
         </div>
 
         <div uk-grid>
-          <div class="uk-width-2-4">
+          <div class="uk-width-1-3">
             <div>
               <div v-if="curGroup">
                 <h3>{{curGroup.name}}のメンバー一覧</h3>
@@ -72,7 +72,7 @@
             </div>
           </div>
 
-          <div class="uk-width-1-4">
+          <div class="uk-width-1-3">
             <div>
               <h3>追加したいユーザーのID(スペース区切り)</h3>
               <input class="uk-input" placeholder="@foo @bar..." type="text" v-model="addUserIds">
@@ -85,12 +85,12 @@
             </div>
           </div>
 
-          <div class="uk-width-1-4">
+          <div class="uk-width-1-3">
             <div>
               <h3>変更後のグループ情報</h3>
-              <input class="uk-input" placeholder="新規グループ名" type="text" v-model="newGroupInfo.name">
-              <input class="uk-input" placeholder="グループの説明" type="text" v-model="newGroupInfo.description">
-              <input class="uk-input" placeholder="新規adminユーザーUUID" type="text" v-model="newGroupInfo.adminUserId">
+              <input class="uk-input" :placeholder="`グループ名: ${curGroup.name}`" type="text" v-model="newGroupInfo.name">
+              <input class="uk-input" :placeholder="`グループの説明: ${curGroup.description}`" type="text" v-model="newGroupInfo.description">
+              <input class="uk-input" :placeholder="`adminユーザーUUID: ${curGroup.adminUserId}`" type="text" v-model="newGroupInfo.adminUserId">
             </div>
 
             <div class="uk-margin">
@@ -153,8 +153,13 @@
                     this.groups = res.data
                 })
             },
-            selectGroup(group) {
+            selectGroup(group: UserGroup) {
                 this.curGroup = group
+                this.newGroupInfo = {
+                    name: group.name,
+                    description: group.description,
+                    adminUserId: group.adminUserId
+                }
             },
             async newGroup() {
                 if (this.newGroupName.trim() === '') {
@@ -184,7 +189,7 @@
                     return
                 }
 
-                if (confirm(`${this.curGroup.name}:\n${this.newGroupInfo}`)) {
+                if (confirm(`変更内容を確認してください。\n  グループ名: ${this.newGroupInfo.name}\n  グループの説明: ${this.newGroupInfo.description}\n  adminユーザーUUID: ${this.newGroupInfo.adminUserId}`)) {
                     await this.api.editGroup(this.curGroup.groupId, this.newGroupInfo)
                         .then(_ => {
                             console.log('updated')
