@@ -151,17 +151,26 @@
                         alert('作成に失敗しました\n' + e.toString())
                     })
             },
-            async deleteGroup(group) {
+            async deleteGroup(group: UserGroup) {
                 if (group.type === 'grade') {
                     alert('学年のグループは編集できません')
                     return
                 }
 
-                await this.api.deleteGroup(group.groupId)
-                    .catch(e => {
-                        console.log(e)
-                        alert('削除に失敗しました\n' + e.toString())
-                    })
+                if (confirm(`${group.name}をグループ一覧から削除しますか？`)) {
+                    await this.api.deleteGroup(group.groupId)
+                        .then(_ => {
+                            console.log('deleted')
+                            return this.getGroups()
+                        })
+                        .then(_ => {
+                            this.curGroup = this.groups.find(g => g.groupId === this.curGroup.groupId)
+                        })
+                        .catch(e => {
+                            console.log(e)
+                            alert('削除に失敗しました\n' + e.toString())
+                        })
+                }
             },
             async addUser() {
                 if (this.curGroup.type === 'grade') {
