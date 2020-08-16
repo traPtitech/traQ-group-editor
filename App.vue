@@ -283,6 +283,7 @@
                         return this.api.getMe().then((me: Me) => {
                             console.log(me)
                             sessionStorage.setItem('access_token', res.data.access_token)
+                            setTimeout(() => console.log('fuga'), 10000)
                             location.href = '/'
                         })
                     })
@@ -295,7 +296,7 @@
                     this.me = res.data
                 })
             }
-            setTimeout(() => console.log("1000s"), 1000)
+
             if (!this.me) {
                 await redirectAuthorizationEndpoint()
             }
