@@ -32,6 +32,7 @@
                   <div class="uk-leader"></div>
                   <div class="uk-position-relative">
                     <span>メンバー {{group.members.length}}人</span>
+                    <span>admin: {{group.adminUserId}}</span>
                     <button @click="deleteGroup(group)"
                             class="uk-button uk-button-danger uk-button-small right-button">削除
                     </button>
@@ -87,7 +88,7 @@
 
           <div class="uk-width-1-3">
             <div>
-              <h3>変更後のグループ情報</h3>
+              <h3>グループ情報の変更</h3>
               <input class="uk-input" :placeholder="`グループ名: ${curGroup.name}`" type="text" v-model="newGroupInfo.name">
               <input class="uk-input" :placeholder="`グループの説明: ${curGroup.description}`" type="text" v-model="newGroupInfo.description">
               <input class="uk-input" :placeholder="`adminユーザーUUID: ${curGroup.adminUserId}`" type="text" v-model="newGroupInfo.adminUserId">
@@ -293,8 +294,8 @@
                 await this.api.getMe().then((res: AxiosResponse<Me>) => {
                     this.me = res.data
                 })
-
             }
+            setTimeout(() => console.log("1000s"), 1000)
             if (!this.me) {
                 await redirectAuthorizationEndpoint()
             }
