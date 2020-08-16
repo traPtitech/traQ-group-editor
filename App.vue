@@ -89,9 +89,9 @@
           <div class="uk-width-1-3">
             <div>
               <h3>グループ情報の変更</h3>
-              <input class="uk-input" :placeholder="`グループ名: ${curGroup.name}`" type="text" v-model="newGroupInfo.name">
-              <input class="uk-input" :placeholder="`グループの説明: ${curGroup.description}`" type="text" v-model="newGroupInfo.description">
-              <input class="uk-input" :placeholder="`adminユーザーUUID: ${curGroup.adminUserId}`" type="text" v-model="newGroupInfo.adminUserId">
+              <input class="uk-input" placeholder="Group Name" type="text" v-model="newGroupInfo.name">
+              <input class="uk-input" placeholder="Group Description" type="text" v-model="newGroupInfo.description">
+              <input class="uk-input" placeholder="Admin User UUID" type="text" v-model="newGroupInfo.adminUserId">
             </div>
 
             <div class="uk-margin">
@@ -283,7 +283,6 @@
                         return this.api.getMe().then((me: Me) => {
                             console.log(me)
                             sessionStorage.setItem('access_token', res.data.access_token)
-                            setTimeout(() => console.log('fuga'), 10000)
                             location.href = '/'
                         })
                     })
