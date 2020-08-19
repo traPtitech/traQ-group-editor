@@ -22,7 +22,7 @@
             </div>
             <div>
               <ul class="uk-list uk-list-divider group">
-                <li :key="group.groupId" v-for="group in groups" @click="selectGroup(group)">
+                <li :key="group.id" v-for="group in groups" @click="selectGroup(group)">
                   <span class="uk-text-lead">
                     {{group.name}}
                   </span>
@@ -32,7 +32,7 @@
                   <div class="uk-leader"></div>
                   <div class="uk-position-relative">
                     <span>メンバー {{group.members.length}}人</span>
-                    <span>admin: {{group.adminUserId}}</span>
+                    <span>adminId: {{group.admins}}</span>
                     <button @click="deleteGroup(group)"
                             class="uk-button uk-button-danger uk-button-small right-button">削除
                     </button>
@@ -91,7 +91,7 @@
               <h3>グループ情報の変更</h3>
               <input class="uk-input" placeholder="Group Name" type="text" v-model="newGroupInfo.name">
               <input class="uk-input" placeholder="Group Description" type="text" v-model="newGroupInfo.description">
-              <input class="uk-input" placeholder="Admin User UUID" type="text" v-model="newGroupInfo.adminUserId">
+              <input class="uk-input" placeholder="Group Type" type="text" v-model="newGroupInfo.type">
             </div>
 
             <div class="uk-margin">
@@ -103,6 +103,17 @@
               </div>
               <button @click="editGroup" class="uk-button uk-button-primary">変更</button>
             </div>
+
+            <div>
+              <h3>adminの追加</h3>
+              <input class="uk-input" placeholder="Group Name" type="text" v-model="newGroupInfo.name"
+                     pattern="[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}">
+            </div>
+
+            <div class="uk-margin">
+              <button @click="addAdmin" class="uk-button uk-button-primary ">追加</button>
+            </div>
+
           </div>
         </div>
       </div>
@@ -111,22 +122,32 @@
 </template>
 
 <script lang="ts">
+    import Vue from 'vue'
     import {fetchAuthToken, redirectAuthorizationEndpoint} from './oauth'
-    import {Apis, Me, PatchUserGroup, User, UserGroup} from 'traq-api'
+    import {
+        Apis,
+        MyUserDetail,
+        PatchUserGroupRequest,
+        User,
+        UserGroup,
+        UserAccountState,
+        PostUserGroupAdminRequest
+    } from '@traptitech/traq'
     import {AxiosResponse} from "axios"
     import UserList from './UserList.vue'
 
-    export default {
+    export default Vue.extend({
         data(): {
             api: Apis | null
-            me: Me | null
+            me: MyUserDetail | null
             users: User[]
             groups: UserGroup[]
             curGroup: UserGroup | null
             newGroupName: string
             addUserIds: string
             newGroupDescription: string
-            newGroupInfo: PatchUserGroup
+            newGroupInfo: PatchUserGroupRequest | null
+            newGroupAdmin: PostUserGroupAdminRequest | null
         } {
             return {
                 api: null,
@@ -137,7 +158,8 @@
                 newGroupName: '',
                 addUserIds: '',
                 newGroupDescription: '',
-                newGroupInfo: {}
+                newGroupInfo: null,
+                newGroupAdmin: null
             }
         },
         components: {
@@ -149,7 +171,7 @@
                 console.log('po')
             },
             async getGroups() {
-                await this.api.getGroups().then((res: AxiosResponse<UserGroup[]>) => {
+                await this.api?.getUserGroups().then((res: AxiosResponse<UserGroup[]>) => {
                     console.log(res)
                     this.groups = res.data
                 })
@@ -159,16 +181,17 @@
                 this.newGroupInfo = {
                     name: group.name,
                     description: group.description,
-                    adminUserId: group.adminUserId
+                    type: group.type
                 }
             },
             async newGroup() {
                 if (this.newGroupName.trim() === '') {
                     return
                 }
-                await this.api.createGroups({
+                await this.api?.createUserGroup({
                     name: this.newGroupName.trim(),
-                    description: this.newGroupDescription
+                    description: this.newGroupDescription,
+                    type: ''
                 })
                     .then(_ => {
                         this.newGroupName = ''
@@ -189,21 +212,50 @@
                     alert('学年のグループは編集できません')
                     return
                 }
+                if (this.newGroupInfo !== null) {
+                    if (confirm(`変更内容を確認してください。\n  グループ名: ${this.newGroupInfo.name}\n  グループの説明: ${this.newGroupInfo.description}\n  adminユーザーUUID: ${this.newGroupInfo.type}`)) {
+                        await this.api?.editUserGroup(this.curGroup!.id, this.newGroupInfo)
+                            .then(_ => {
+                                console.log('updated')
+                                this.newGroupInfo = {}
+                                return this.getGroups()
+                            })
+                            .then(_ => {
+                                this.curGroup = this.groups.find(g => g.id === this.curGroup!.id) ?? null
+                            })
+                            .catch(e => {
+                                console.log(e)
+                                alert('更新に失敗しました\n' + e.toString())
+                            })
+                    }
+                }
+            },
+            async addAdmin() {
+                if (!this.curGroup) {
+                    alert('編集するグループを選択してください')
+                    return
+                }
+                if (this.curGroup.type === 'grade') {
+                    alert('学年のグループは編集できません')
+                    return
+                }
 
-                if (confirm(`変更内容を確認してください。\n  グループ名: ${this.newGroupInfo.name}\n  グループの説明: ${this.newGroupInfo.description}\n  adminユーザーUUID: ${this.newGroupInfo.adminUserId}`)) {
-                    await this.api.editGroup(this.curGroup.groupId, this.newGroupInfo)
-                        .then(_ => {
-                            console.log('updated')
-                            this.newGroupInfo = {}
-                            return this.getGroups()
-                        })
-                        .then(_ => {
-                            this.curGroup = this.groups.find(g => g.groupId === this.curGroup.groupId)
-                        })
-                        .catch(e => {
-                            console.log(e)
-                            alert('更新に失敗しました\n' + e.toString())
-                        })
+                if (this.newGroupAdmin !== null) {
+                    if (confirm(`追加するユーザーを確認してください。\n  新規admin: ${this.newGroupAdmin}`)) {
+                        await this.api?.addUserGroupAdmin(this.curGroup!.id, this.newGroupAdmin)
+                            .then(_ => {
+                                console.log('added')
+                                this.newGroupInfo = {}
+                                return this.getGroups()
+                            })
+                            .then(_ => {
+                                this.curGroup = this.groups.find(g => g.id === this.curGroup!.id) ?? null
+                            })
+                            .catch(e => {
+                                console.log(e)
+                                alert('追加に失敗しました\n' + e.toString())
+                            })
+                    }
                 }
             },
             async deleteGroup(group: UserGroup) {
@@ -213,13 +265,13 @@
                 }
 
                 if (confirm(`${group.name}をグループ一覧から削除しますか？`)) {
-                    await this.api.deleteGroup(group.groupId)
+                    await this.api?.deleteUserGroup(group.id)
                         .then(_ => {
                             console.log('deleted')
                             return this.getGroups()
                         })
                         .then(_ => {
-                            this.curGroup = this.groups.find(g => g.groupId === this.curGroup.groupId)
+                            this.curGroup = this.groups.find(g => g.id === this.curGroup?.id) ?? null
                         })
                         .catch(e => {
                             console.log(e)
@@ -228,40 +280,44 @@
                 }
             },
             async addUser() {
+                if (!this.curGroup) return
+
                 if (this.curGroup.type === 'grade') {
                     alert('学年のグループは編集できません')
                     return
                 }
 
                 await Promise.all(this.willAddUser.map(user => {
-                    return this.api.addGroupMember(this.curGroup.groupId, {userId: user.userId})
+                    return this.api?.addUserGroupMember(this.curGroup!.id, {id: user.id, role: ''})
                 }))
                     .then(_ => {
                         console.log('successfully added')
                         return this.getGroups()
                     })
                     .then(_ => {
-                        this.curGroup = this.groups.find(g => g.groupId === this.curGroup.groupId)
+                        this.curGroup = this.groups.find(g => g.id === this.curGroup!.id) ?? null
                     })
                     .catch(e => {
                         console.log(e)
                         alert('追加に失敗しました\n' + e.toString())
                     })
             },
-            async removeUser(user) {
+            async removeUser(user: User) {
+                if (!this.curGroup) return
+
                 if (this.curGroup.type === 'grade') {
                     alert('学年のグループは編集できません')
                     return
                 }
 
                 if (confirm(`${user.name}を${this.curGroup.name}から削除しますか？`)) {
-                    await this.api.deleteGroupMember(this.curGroup.groupId, user.userId)
+                    await this.api?.removeUserGroupMember(this.curGroup.id, user.id)
                         .then(_ => {
                             console.log('deleted')
                             return this.getGroups()
                         })
                         .then(_ => {
-                            this.curGroup = this.groups.find(g => g.groupId === this.curGroup.groupId)
+                            this.curGroup = this.groups.find(g => g.id === this.curGroup!.id) ?? null
                         })
                         .catch(e => {
                             console.log(e)
@@ -277,21 +333,22 @@
             if (code && state) {
                 const verifier = sessionStorage.getItem(`login-code-verifier-${state}`)
                 await fetchAuthToken(code, verifier)
-                    .then(res => {
+                    .then(async (res: { data: { access_token: string } }) => {
                         console.log(res)
-                        this.api = new Apis({accessToken: res.data.access_token})
-                        return this.api.getMe().then((me: Me) => {
-                            console.log(me)
-                            sessionStorage.setItem('access_token', res.data.access_token)
-                            location.href = '/'
+                        this.api = new Apis({
+                            accessToken: res.data.access_token
                         })
+                        const me = await this.api.getMe()
+                        console.log(me)
+                        sessionStorage.setItem('access_token', res.data.access_token)
+                        location.href = '/'
                     })
             } else {
-                const accessToken = sessionStorage.getItem('access_token')
+                const accessToken = sessionStorage.getItem('access_token')!
                 this.api = new Apis({
                     accessToken: accessToken
                 })
-                await this.api.getMe().then((res: AxiosResponse<Me>) => {
+                await this.api.getMe().then((res: AxiosResponse<MyUserDetail>) => {
                     this.me = res.data
                 })
             }
@@ -299,7 +356,7 @@
             if (!this.me) {
                 await redirectAuthorizationEndpoint()
             }
-            await this.api.getUsers().then((res: AxiosResponse<User[]>) => {
+            await this.api?.getUsers().then((res: AxiosResponse<User[]>) => {
                 this.users = res.data
             })
             await this.getGroups()
@@ -310,24 +367,24 @@
                     return []
                 }
 
-                return this.curGroup.members.map(userId => {
-                    return this.users.find(user => user.userId === userId)
-                })
+                return this.curGroup.members.map(member => {
+                    return this.users.find(user => user.id === member.id)
+                }).filter(<T>(user: T): user is Exclude<T, undefined> => !!user)
             },
             realUsers(): User[] {
-                return this.users.filter((user: User) => !user.bot && !user.suspended)
+                return this.users.filter((user: User) => !user.bot && user.state === UserAccountState.active)
             },
             wantSetUser(): string[] {
                 return this.addUserIds.split('@').map(id => id.trim())
             },
             willAddUser(): User[] {
-                return this.wantSetUser.map(id => this.users.find(user => user.name === id)).filter(user => !!user)
+                return this.wantSetUser.map(id => this.users.find(user => user.name === id)).filter(<T>(user: T): user is Exclude<T, undefined> => !!user)
                     .filter(user => {
-                        return !this.curGroup.members.find(userId => user.userId === userId)
+                        return !this.curGroup?.members.find(member => user.id === member.id)
                     })
             }
         }
-    }
+    })
 </script>
 
 <style>
