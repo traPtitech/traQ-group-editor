@@ -338,8 +338,10 @@
                         this.api = new Apis({
                             accessToken: res.data.access_token
                         })
-                        const me = await this.api.getMe()
-                        console.log(me)
+                        await this.api.getMe().then((res: AxiosResponse<MyUserDetail>) => {
+                            this.me = res.data
+                        })
+                        console.log(this.me)
                         sessionStorage.setItem('access_token', res.data.access_token)
                         location.href = '/'
                     })
