@@ -1,8 +1,9 @@
 {
   "compilerOptions": {
-    "target": "es5",
+    "target": "esnext",
     "lib": [ "dom", "es2015" ],
     "module": "es2015",
+    "strict": true,
     "allowJs": true,
     "sourceMap": true,
     "moduleResolution": "node",

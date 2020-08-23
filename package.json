@@ -16,20 +16,20 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@traptitech/traq": "^3.4.4-0",
     "axios": "^0.19.2",
     "parcel-bundler": "^1.12.4",
-    "traq-api": "github:traPtitech/node-traq#2.7.2-1",
     "vue": "^2.6.11",
     "vue-hot-reload-api": "^2.3.4"
   },
   "devDependencies": {
+    "@babel/core": "^7.11.1",
+    "@babel/preset-env": "^7.11.0",
     "@vue/component-compiler-utils": "^3.2.0",
-    "babel-core": "^6.26.3",
-    "babel-preset-env": "^1.7.0",
     "typescript": "^3.9.7",
     "vue-template-compiler": "^2.6.11"
   },
   "browserslist": [
-    "last 1 Chrome version"
+    "chrome > 78"
   ]
 }
