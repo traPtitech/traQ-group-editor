@@ -220,7 +220,7 @@
                         await this.api?.editUserGroup(this.curGroup!.id, this.newGroupInfo)
                             .then(_ => {
                                 console.log('updated')
-                                this.newGroupInfo = {}
+                                this.newGroupInfo = null
                                 return this.getGroups()
                             })
                             .then(_ => {
@@ -248,7 +248,7 @@
                         await this.api?.addUserGroupAdmin(this.curGroup!.id, this.newGroupAdmin)
                             .then(_ => {
                                 console.log('added')
-                                this.newGroupInfo = {}
+                                this.newGroupAdmin = null
                                 return this.getGroups()
                             })
                             .then(_ => {
