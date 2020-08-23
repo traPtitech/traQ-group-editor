@@ -87,7 +87,7 @@
           </div>
 
           <div class="uk-width-1-3">
-            <div>
+            <div v-if="newGroupInfo">
               <h3>グループ情報の変更</h3>
               <input class="uk-input" placeholder="Group Name" type="text" v-model="newGroupInfo.name">
               <input class="uk-input" placeholder="Group Description" type="text" v-model="newGroupInfo.description">
@@ -104,14 +104,14 @@
               <button @click="editGroup" class="uk-button uk-button-primary">変更</button>
             </div>
 
-            <div>
+            <div v-if="newGroupAdmin">
               <h3>adminの追加</h3>
-              <input class="uk-input" placeholder="Group Name" type="text" v-model="newGroupInfo.name"
+              <input class="uk-input" placeholder="Group Admin" type="text" v-model="newGroupAdmin.id"
                      pattern="[0-9a-fA-F]{8}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{4}\-[0-9a-fA-F]{12}">
             </div>
 
             <div class="uk-margin">
-              <button @click="addAdmin" class="uk-button uk-button-primary ">追加</button>
+              <button @click="addAdmin" class="uk-button uk-button-primary">追加</button>
             </div>
 
           </div>
@@ -182,6 +182,9 @@
                     name: group.name,
                     description: group.description,
                     type: group.type
+                }
+                this.newGroupAdmin = {
+                    id: ''
                 }
             },
             async newGroup() {
