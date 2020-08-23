@@ -91,7 +91,6 @@
               <h3>グループ情報の変更</h3>
               <input class="uk-input" placeholder="Group Name" type="text" v-model="newGroupInfo.name">
               <input class="uk-input" placeholder="Group Description" type="text" v-model="newGroupInfo.description">
-              <input class="uk-input" placeholder="Group Type" type="text" v-model="newGroupInfo.type">
             </div>
 
             <div class="uk-margin">
@@ -216,7 +215,7 @@
                     return
                 }
                 if (this.newGroupInfo !== null) {
-                    if (confirm(`変更内容を確認してください。\n  グループ名: ${this.newGroupInfo.name}\n  グループの説明: ${this.newGroupInfo.description}\n  adminユーザーUUID: ${this.newGroupInfo.type}`)) {
+                    if (confirm(`変更内容を確認してください。\n  グループ名: ${this.newGroupInfo.name ? this.newGroupInfo.name : this.curGroup.name + "(未変更)"}\n  グループの説明: ${this.newGroupInfo.description ? this.newGroupInfo.description : this.curGroup.description + "(未変更)"}`)) {
                         await this.api?.editUserGroup(this.curGroup!.id, this.newGroupInfo)
                             .then(_ => {
                                 console.log('updated')
@@ -244,7 +243,7 @@
                 }
 
                 if (this.newGroupAdmin !== null) {
-                    if (confirm(`追加するユーザーを確認してください。\n  新規admin: ${this.newGroupAdmin}`)) {
+                    if (confirm(`追加するユーザーを確認してください。\n  新規admin: ${this.newGroupAdmin.id}`)) {
                         await this.api?.addUserGroupAdmin(this.curGroup!.id, this.newGroupAdmin)
                             .then(_ => {
                                 console.log('added')
@@ -259,6 +258,9 @@
                                 alert('追加に失敗しました\n' + e.toString())
                             })
                     }
+                } else {
+                    alert('追加するユーザーを入力してください')
+                    return
                 }
             },
             async deleteGroup(group: UserGroup) {
